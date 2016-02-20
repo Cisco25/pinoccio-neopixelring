@@ -28,13 +28,24 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(16, PIN, NEO_GRB + NEO_KHZ800);
 #define LEFT  0
 #define RIGHT 1
 
-uint8_t   snake_len = 8;
-uint32_t  snake_head, snake_tail;
+struct neoSnake {
+  uint8_t length;
+  uint8_t bright;
+  uint8_t vRed;
+  uint8_t vGreen; 
+  uint8_t vBlue; 
+};
+
+neoSnake snake =    { .length = 6,  \
+                      .bright = 100, \
+                      .vRed = 0,    \
+                      .vGreen = 255, \
+                      .vBlue = 0};
+uint8_t  snake_head, snake_tail;
 uint8_t   nbPixels;
-uint8_t   vRed, vGreen, vBlue;
 
 void setup() {
-  Scout.setup(SKETCH_NAME, SKETCH_REVISION, SKETCH_BUILD);
+  //Scout.setup(SKETCH_NAME, SKETCH_REVISION, SKETCH_BUILD);
   addBitlashFunction("neopix.on", (bitlash_function)turnOn);
   addBitlashFunction("neopix.off", (bitlash_function)turnOff);
   addBitlashFunction("neopix.lsnake", (bitlash_function)leftSnake);
@@ -45,28 +56,35 @@ void setup() {
   addBitlashFunction("neopix.blue", (bitlash_function)colorBlue);
   addBitlashFunction("neopix.white", (bitlash_function)colorWhite);
   addBitlashFunction("neopix.bonjour", (bitlash_function)bonjour);
-  //Serial.begin(115200);
+  Serial.begin(115200);
   
   strip.begin();
   nbPixels = strip.numPixels();
   
-  vRed = 255;
-  vGreen = 0;
-  vBlue = 0;
-  bonjour();
+//  snake.length = 8;
+//  snake.bright = 255;
+//  snake.vRed = 255;
+//  snake.vGreen = 0;
+//  snake.vBlue = 0;
+//  bonjour();
 }
 
 void loop() {
-  Scout.loop();
-  //runSnake(LEFT, 5, 70);
-  //runSnake(RIGHT, 5, 70);
+  //Scout.loop();
+  neoSnake snake1 = { .length = 12,  \
+                      .bright = 255, \
+                      .vRed = 50,    \
+                      .vGreen = 255, \
+                      .vBlue = 100};
+  runSnake(&snake1, LEFT, 3, 2);
+  //runSnake(RIGHT, 5, 8);
   //flash(5, 200);
   //delay(500);
 }
 
 numvar turnOn() {
   for(uint16_t i=0; i<nbPixels; i++) {
-    strip.setPixelColor(i, strip.Color(vRed, vGreen, vBlue));
+    strip.setPixelColor(i, strip.Color(snake.vRed, snake.vGreen, snake.vBlue));
     strip.show();
   }
 }
@@ -91,39 +109,39 @@ numvar flash5c() {
 }
 
 numvar colorRed() {
-  vRed = 255;
-  vGreen = 0;
-  vBlue = 0;
+  snake.vRed = 255;
+  snake.vGreen = 0;
+  snake.vBlue = 0;
   Blink();
 }
 
 numvar colorGreen() {
-  vRed = 0;
-  vGreen = 255;
-  vBlue = 0;
+  snake.vRed = 0;
+  snake.vGreen = 255;
+  snake.vBlue = 0;
   Blink();
 }
 
 numvar colorBlue() {
-  vRed = 0;
-  vGreen = 0;
-  vBlue = 255;
+  snake.vRed = 0;
+  snake.vGreen = 0;
+  snake.vBlue = 255;
   Blink();
 }
 
 numvar colorWhite() {
-  vRed = 255;
-  vGreen = 255;
-  vBlue = 255;
+  snake.vRed = 255;
+  snake.vGreen = 255;
+  snake.vBlue = 255;
   Blink();
 }
 
 numvar bonjour() {
   uint8_t sRed, sGreen, sBlue;
   // Save original colors
-  sRed = vRed;
-  sGreen = vGreen;
-  sBlue = vBlue;
+  sRed = snake.vRed;
+  sGreen = snake.vGreen;
+  sBlue = snake.vBlue;
   colorRed();
   runSnake(LEFT, 1, 70);
   colorGreen();
@@ -133,9 +151,9 @@ numvar bonjour() {
   colorWhite();
   runSnake(RIGHT, 1, 70);
   // Load original colors
-  vRed = sRed;
-  vGreen = sGreen;
-  vBlue = sBlue;
+  snake.vRed = sRed;
+  snake.vGreen = sGreen;
+  snake.vBlue = sBlue;
 }
 
 void Blink () {
@@ -148,53 +166,102 @@ void Blink () {
 }
 
 void initSnake(uint8_t direction) {
-  uint8_t sRed, sGreen, sBlue;
-  
+//  float fRed, fGreen, fBlue;
+  uint32_t sRed, sGreen, sBlue;
+  Serial.println("");
   if(!direction) {
-    snake_head = snake_len-1;
+    snake_head = snake.length-1;
     snake_tail = 0;
   
-    for(uint16_t i=0; i<snake_len; i++) {
-      if(i==0) {
-        sRed = (256/snake_len)*vRed;
-        sGreen = (256/snake_len)*vGreen;
-        sBlue = (256/snake_len)*vBlue;
+    for(uint16_t i=0; i<snake.length; i++) {
+      /*if(i==0) {
+//        sRed = (256/snake.length)*snake.vRed;
+//        sGreen = (256/snake.length)*snake.vGreen;
+//        sBlue = (256/snake.length)*snake.vBlue;
+        sRed = snake.vRed*snake.bright/(255*snake.length);
+        sGreen = snake.vGreen*snake.bright/(255*snake.length);
+        sBlue = snake.vBlue*snake.bright/(255*snake.length);
         strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      } else if(i==snake_len-1) {
-        strip.setPixelColor(i, strip.Color(vRed, vGreen, vBlue));
+      } else if(i==snake.length-1) {
+        sRed = snake.vRed*snake.bright/255;
+        sGreen = snake.vGreen*snake.bright/255;
+        sBlue = snake.vBlue*snake.bright/255;
+        strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
       } else {
-        sRed = (i+1)*(256/snake_len)*vRed;
-        sGreen = (i+1)*(256/snake_len)*vGreen;
-        sBlue = (i+1)*(256/snake_len)*vBlue;
+//        sRed = (i+1)*(256/snake.length)*snake.vRed;
+//        sGreen = (i+1)*(256/snake.length)*snake.vGreen;
+//        sBlue = (i+1)*(256/snake.length)*snake.vBlue;
+        sRed = (i+1)/snake.length*snake.vRed*snake.bright/255;
+        sGreen = (i+1)/snake.length*snake.vGreen*snake.bright/255;
+        sBlue = (i+1)/snake.length*snake.vBlue*snake.bright/255;
         strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      }
+      }*/
+      
+      sRed = (i+1)*snake.vRed/snake.length*snake.bright/255;
+      sGreen = (i+1)*snake.vGreen/snake.length*snake.bright/255;
+      sBlue = (i+1)*snake.vBlue/snake.length*snake.bright/255;
+      strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
       strip.show();
+      
+//      sRed = (int)fRed;
+//      sGreen = (int)fGreen;
+//      sBlue = (int)fBlue;
+      
+      Serial.print("p[");
+      Serial.print(i);
+      Serial.print("] = [");
+      Serial.print(sRed);
+      Serial.print("\t");
+      Serial.print(sGreen);
+      Serial.print("\t");
+      Serial.print(sBlue);
+      Serial.println("]");
     }
   
-    for(uint16_t i=snake_len; i<nbPixels; i++) {
+    for(uint16_t i=snake.length; i<nbPixels; i++) {
       strip.setPixelColor(i, strip.Color(0, 0, 0));
       strip.show();
     }
   }
   else {
-    snake_head = nbPixels-1-snake_len;
+    snake_head = nbPixels-1-snake.length;
     snake_tail = nbPixels-1;
     
     for(uint16_t i=nbPixels-1; i>snake_head; i--) {
-      if(i==nbPixels-1) {
-        sRed = (256/snake_len)*vRed;
-        sGreen = (256/snake_len)*vGreen;
-        sBlue = (256/snake_len)*vBlue;
+      /*if(i==nbPixels-1) {
+//        sRed = (256/snake.length)*snake.vRed;
+//        sGreen = (256/snake.length)*snake.vGreen;
+//        sBlue = (256/snake.length)*snake.vBlue;
+        sRed = snake.length*(snake.vRed/(snake.bright+1));
+        sGreen = snake.length*(snake.vGreen/(snake.bright+1));
+        sBlue = snake.length*(snake.vBlue/(snake.bright+1));
         strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
       } else if(i==snake_head+1) {
-        strip.setPixelColor(i, strip.Color(vRed, vGreen, vBlue));
+        strip.setPixelColor(i, strip.Color(snake.vRed, snake.vGreen, snake.vBlue));
       } else {
-        sRed = (nbPixels-i)*(256/snake_len)*vRed;
-        sGreen = (nbPixels-i)*(256/snake_len)*vGreen;
-        sBlue = (nbPixels-i)*(256/snake_len)*vBlue;
+//        sRed = (nbPixels-i)*(256/snake.length)*snake.vRed;
+//        sGreen = (nbPixels-i)*(256/snake.length)*snake.vGreen;
+//        sBlue = (nbPixels-i)*(256/snake.length)*snake.vBlue;
+        sRed = (nbPixels-i)*snake.length*(snake.vRed/(snake.bright+1));
+        sGreen = (nbPixels-i)*snake.length*(snake.vGreen/(snake.bright+1));
+        sBlue = (nbPixels-i)*snake.length*(snake.vBlue/(snake.bright+1));
         strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      }
+      }*/
+      sRed = (nbPixels-i)*snake.vRed/snake.length*snake.bright/255;
+      sGreen = (nbPixels-i)*snake.vGreen/snake.length*snake.bright/255;
+      sBlue = (nbPixels-i)*snake.vBlue/snake.length*snake.bright/255;
+      strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
       strip.show();
+      
+      Serial.print("p[");
+      Serial.print(i);
+      Serial.print("] = [");
+      Serial.print(sRed);
+      Serial.print("\t");
+      Serial.print(sGreen);
+      Serial.print("\t");
+      Serial.print(sBlue);
+      Serial.println("]");
     }
   
     for(uint16_t i=0; i<snake_head; i++) {
@@ -210,7 +277,7 @@ void initSnake(uint8_t direction) {
   Serial.println(snake_tail);*/
 }
 
-void runSnake(uint8_t direction, uint8_t nbTurns, uint16_t wait) {
+void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
   uint16_t  turnCount = 0;
   
   // Init snake
@@ -238,7 +305,7 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint16_t wait) {
         
         // Move snake
         for(uint16_t i=0; i<=snake_head+1; i++) {
-          if(i == snake_len) {
+          if(i == snake.length) {
             strip.setPixelColor(snake_tail, strip.Color(0, 0, 0));
             strip.show();
             break;
@@ -370,6 +437,7 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint16_t wait) {
   Serial.println(snake_tail);*/
       
   // Wait
+  uint16_t wait = 110 - (speed*10);
   delay(wait);
   }
   
@@ -382,7 +450,7 @@ void flash(uint8_t nbFlash, uint16_t wait) {
   
   while(flashCount < nbFlash) {
     for(uint16_t i=0; i<nbPixels; i++) {
-      strip.setPixelColor(i, strip.Color(vRed, vGreen, vBlue));
+      strip.setPixelColor(i, strip.Color(snake.vRed, snake.vGreen, snake.vBlue));
       strip.show();
     } 
     delay(wait);

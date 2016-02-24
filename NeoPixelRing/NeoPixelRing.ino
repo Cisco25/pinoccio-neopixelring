@@ -1,3 +1,8 @@
+//TODO: fix number of turns (n.5 instead of n)
+
+#define _debug_
+
+#ifndef _debug_
 #include <SPI.h>
 #include <Wire.h>
 #include <Scout.h>
@@ -5,6 +10,8 @@
 #include <bitlash.h>
 #include <lwm.h>
 #include <js0n.h>
+#endif
+
 #include <Adafruit_NeoPixel.h>
 
 #include "version.h"
@@ -28,24 +35,38 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(16, PIN, NEO_GRB + NEO_KHZ800);
 #define LEFT  0
 #define RIGHT 1
 
-struct neoSnake {
-  uint8_t length;
-  uint8_t bright;
-  uint8_t vRed;
-  uint8_t vGreen; 
-  uint8_t vBlue; 
-};
-
-neoSnake snake =    { .length = 6,  \
-                      .bright = 100, \
-                      .vRed = 0,    \
-                      .vGreen = 255, \
-                      .vBlue = 0};
 uint8_t  snake_head, snake_tail;
 uint8_t   nbPixels;
 
+struct nsnake {
+  uint8_t direction;  // LEFT or RIGHT
+  uint8_t length;     // from 1 to max number of pixels (16)
+  uint8_t speed;      // from 1 to 10
+  uint8_t brightness; // from 0 to 255
+  uint8_t vRed;       // from 0 to 255
+  uint8_t vGreen;     // from 0 to 255
+  uint8_t vBlue;      // from 0 to 255
+};
+typedef struct nsnake neoSnake;
+
+neoSnake snake0 = {   .direction = RIGHT, \
+                      .length = 5,  \
+                      .speed = 1, \
+                      .brightness = 100, \
+                      .vRed = 0,    \
+                      .vGreen = 255, \
+                      .vBlue = 0 };
+neoSnake snake1 = {   .direction = LEFT, \
+                      .length = 10,  \
+                      .speed = 1, \
+                      .brightness = 100, \
+                      .vRed = 50,    \
+                      .vGreen = 150, \
+                      .vBlue = 255 };
+
 void setup() {
-  //Scout.setup(SKETCH_NAME, SKETCH_REVISION, SKETCH_BUILD);
+#ifndef _debug_
+  Scout.setup(SKETCH_NAME, SKETCH_REVISION, SKETCH_BUILD);
   addBitlashFunction("neopix.on", (bitlash_function)turnOn);
   addBitlashFunction("neopix.off", (bitlash_function)turnOff);
   addBitlashFunction("neopix.lsnake", (bitlash_function)leftSnake);
@@ -56,32 +77,41 @@ void setup() {
   addBitlashFunction("neopix.blue", (bitlash_function)colorBlue);
   addBitlashFunction("neopix.white", (bitlash_function)colorWhite);
   addBitlashFunction("neopix.bonjour", (bitlash_function)bonjour);
+#endif
+
   Serial.begin(115200);
   
   strip.begin();
   nbPixels = strip.numPixels();
-  
-//  snake.length = 8;
-//  snake.bright = 255;
-//  snake.vRed = 255;
-//  snake.vGreen = 0;
-//  snake.vBlue = 0;
-//  bonjour();
 }
 
 void loop() {
-  //Scout.loop();
-  neoSnake snake1 = { .length = 12,  \
-                      .bright = 255, \
-                      .vRed = 50,    \
-                      .vGreen = 255, \
-                      .vBlue = 100};
-  runSnake(&snake1, LEFT, 3, 2);
-  //runSnake(RIGHT, 5, 8);
+#ifndef _debug_
+  Scout.loop();
+#endif
+
+  runNeoSnake(snake0, 3);
+  runNeoSnake(snake1, 2);
+
   //flash(5, 200);
   //delay(500);
 }
 
+#ifdef _debug_
+void turnOn(neoSnake snake) {
+  for(uint16_t i=0; i<nbPixels; i++) {
+    strip.setPixelColor(i, strip.Color(snake.vRed, snake.vGreen, snake.vBlue));
+    strip.show();
+  }
+}
+
+void turnOff() {
+  for(uint16_t i=0; i<nbPixels; i++) {
+    strip.setPixelColor(i, strip.Color(0, 0, 0));
+    strip.show();
+  }
+}
+#else
 numvar turnOn() {
   for(uint16_t i=0; i<nbPixels; i++) {
     strip.setPixelColor(i, strip.Color(snake.vRed, snake.vGreen, snake.vBlue));
@@ -155,58 +185,32 @@ numvar bonjour() {
   snake.vGreen = sGreen;
   snake.vBlue = sBlue;
 }
+#endif
 
-void Blink () {
-  for(int i=0; i<2; i++) {
-    turnOn();
-    delay(250);
-    turnOff();
-    delay(250);
-  }
-}
-
-void initSnake(uint8_t direction) {
-//  float fRed, fGreen, fBlue;
+void initNeoSnake(neoSnake snake) {
+  uint32_t cRed, cGreen, cBlue;
   uint32_t sRed, sGreen, sBlue;
-  Serial.println("");
-  if(!direction) {
+
+  cRed = snake.vRed / snake.length * snake.brightness / 255;
+  cGreen = snake.vGreen / snake.length * snake.brightness / 255;
+  cBlue = snake.vBlue / snake.length * snake.brightness / 255;
+
+#ifdef _debug_
+  Serial.println();
+#endif
+
+  if (!snake.direction) {
     snake_head = snake.length-1;
     snake_tail = 0;
   
-    for(uint16_t i=0; i<snake.length; i++) {
-      /*if(i==0) {
-//        sRed = (256/snake.length)*snake.vRed;
-//        sGreen = (256/snake.length)*snake.vGreen;
-//        sBlue = (256/snake.length)*snake.vBlue;
-        sRed = snake.vRed*snake.bright/(255*snake.length);
-        sGreen = snake.vGreen*snake.bright/(255*snake.length);
-        sBlue = snake.vBlue*snake.bright/(255*snake.length);
-        strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      } else if(i==snake.length-1) {
-        sRed = snake.vRed*snake.bright/255;
-        sGreen = snake.vGreen*snake.bright/255;
-        sBlue = snake.vBlue*snake.bright/255;
-        strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      } else {
-//        sRed = (i+1)*(256/snake.length)*snake.vRed;
-//        sGreen = (i+1)*(256/snake.length)*snake.vGreen;
-//        sBlue = (i+1)*(256/snake.length)*snake.vBlue;
-        sRed = (i+1)/snake.length*snake.vRed*snake.bright/255;
-        sGreen = (i+1)/snake.length*snake.vGreen*snake.bright/255;
-        sBlue = (i+1)/snake.length*snake.vBlue*snake.bright/255;
-        strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      }*/
-      
-      sRed = (i+1)*snake.vRed/snake.length*snake.bright/255;
-      sGreen = (i+1)*snake.vGreen/snake.length*snake.bright/255;
-      sBlue = (i+1)*snake.vBlue/snake.length*snake.bright/255;
+    for(uint16_t i = 0; i < snake.length; i++) {
+      sRed = (i+1)*cRed;
+      sGreen = (i+1)*cGreen;
+      sBlue = (i+1)*cBlue;
       strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
       strip.show();
       
-//      sRed = (int)fRed;
-//      sGreen = (int)fGreen;
-//      sBlue = (int)fBlue;
-      
+#ifdef _debug_
       Serial.print("p[");
       Serial.print(i);
       Serial.print("] = [");
@@ -216,43 +220,26 @@ void initSnake(uint8_t direction) {
       Serial.print("\t");
       Serial.print(sBlue);
       Serial.println("]");
+#endif
     }
-  
-    for(uint16_t i=snake.length; i<nbPixels; i++) {
+
+    for(uint16_t i = snake.length; i < nbPixels; i++) {
       strip.setPixelColor(i, strip.Color(0, 0, 0));
-      strip.show();
+      strip.show(); 
     }
   }
   else {
-    snake_head = nbPixels-1-snake.length;
+    snake_head = nbPixels-1 - snake.length;
     snake_tail = nbPixels-1;
     
-    for(uint16_t i=nbPixels-1; i>snake_head; i--) {
-      /*if(i==nbPixels-1) {
-//        sRed = (256/snake.length)*snake.vRed;
-//        sGreen = (256/snake.length)*snake.vGreen;
-//        sBlue = (256/snake.length)*snake.vBlue;
-        sRed = snake.length*(snake.vRed/(snake.bright+1));
-        sGreen = snake.length*(snake.vGreen/(snake.bright+1));
-        sBlue = snake.length*(snake.vBlue/(snake.bright+1));
-        strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      } else if(i==snake_head+1) {
-        strip.setPixelColor(i, strip.Color(snake.vRed, snake.vGreen, snake.vBlue));
-      } else {
-//        sRed = (nbPixels-i)*(256/snake.length)*snake.vRed;
-//        sGreen = (nbPixels-i)*(256/snake.length)*snake.vGreen;
-//        sBlue = (nbPixels-i)*(256/snake.length)*snake.vBlue;
-        sRed = (nbPixels-i)*snake.length*(snake.vRed/(snake.bright+1));
-        sGreen = (nbPixels-i)*snake.length*(snake.vGreen/(snake.bright+1));
-        sBlue = (nbPixels-i)*snake.length*(snake.vBlue/(snake.bright+1));
-        strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
-      }*/
-      sRed = (nbPixels-i)*snake.vRed/snake.length*snake.bright/255;
-      sGreen = (nbPixels-i)*snake.vGreen/snake.length*snake.bright/255;
-      sBlue = (nbPixels-i)*snake.vBlue/snake.length*snake.bright/255;
+    for(uint16_t i = nbPixels-1; i > snake_head; i--) {
+      sRed = (nbPixels-i) * cRed;
+      sGreen = (nbPixels-i) * cGreen;
+      sBlue = (nbPixels-i) * cBlue;
       strip.setPixelColor(i, strip.Color(sRed, sGreen, sBlue));
       strip.show();
-      
+
+#ifdef _debug_
       Serial.print("p[");
       Serial.print(i);
       Serial.print("] = [");
@@ -262,30 +249,32 @@ void initSnake(uint8_t direction) {
       Serial.print("\t");
       Serial.print(sBlue);
       Serial.println("]");
+#endif
     }
-  
-    for(uint16_t i=0; i<snake_head; i++) {
+
+    for(uint16_t i = 0; i < snake_head; i++) {
       strip.setPixelColor(i, strip.Color(0, 0, 0));
       strip.show();
     }
   }
-  
-  // Debug
-  /*Serial.print("Head = ");
+
+#ifdef _debug_
+  Serial.print("Head = ");
   Serial.print(snake_head);  
   Serial.print("\tTail = ");
-  Serial.println(snake_tail);*/
+  Serial.println(snake_tail);
+#endif
 }
 
-void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
+void runNeoSnake (neoSnake snake, uint8_t nbTurns) {
   uint16_t  turnCount = 0;
-  
+
   // Init snake
-  initSnake(direction);
-  
+  initNeoSnake(snake);
+
   while(turnCount < nbTurns) {
     // DIRECTION = LEFT
-    if(!direction) {
+    if(!snake.direction) {
       // Head and tail are on the same part of the ring
       if(snake_head > snake_tail) {
         // Snake head is on last pixel
@@ -296,15 +285,16 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
           
           // Increment turn counter
           turnCount++;
-          
-          // Debug
-          //Serial.print("\nTurn# ");
-          //Serial.println(turnCount);
-          //Serial.println("");
+
+#ifdef _debug_
+          Serial.print("\nTurn# ");
+          Serial.println(turnCount);
+          Serial.println("");
+#endif
         }  
         
         // Move snake
-        for(uint16_t i=0; i<=snake_head+1; i++) {
+        for(uint16_t i = 0; i <= snake_head+1; i++) {
           if(i == snake.length) {
             strip.setPixelColor(snake_tail, strip.Color(0, 0, 0));
             strip.show();
@@ -319,7 +309,7 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
       // Head and tail are on separate part of the ring
       else {
         // Move head part of the snake
-        for(uint16_t i=0; i<=snake_head+1; i++) {
+        for(uint16_t i = 0; i <= snake_head+1; i++) {
           uint32_t color = strip.getPixelColor(snake_head-i);
           strip.setPixelColor(snake_head+1-i, color);
           strip.show();
@@ -332,7 +322,7 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
         
         // Move tail part of the snake
         uint8_t tail_len = ((nbPixels-1)-snake_tail);
-        for(uint16_t i=0; i<=tail_len; i++) {
+        for(uint16_t i = 0; i <= tail_len; i++) {
           if(i == tail_len) {
             strip.setPixelColor(snake_tail, strip.Color(0, 0, 0));
             strip.show();
@@ -366,17 +356,19 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
           uint32_t color = strip.getPixelColor(0);
           strip.setPixelColor(nbPixels-1, color);
           strip.show();
+          
           // Increment turn counter
           turnCount++;
           
-          // Debug
-          //Serial.print("\nTurn# ");
-          //Serial.println(turnCount);
-          //Serial.println("");
+#ifdef _debug_
+          Serial.print("\nTurn# ");
+          Serial.println(turnCount);
+          Serial.println("");
+#endif
         }
         
         // Move snake
-        for(uint16_t i=snake_head; i<=snake_tail+1; i++) {
+        for(uint16_t i = snake_head; i <= snake_tail+1; i++) {
           if(i == snake_tail+1) {
             strip.setPixelColor(snake_tail, strip.Color(0, 0, 0));
             strip.show();
@@ -392,7 +384,7 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
       // Head and tail are on separate part of the ring
       else {
         // Move head part of the snake
-        for(uint16_t i=snake_head; i<nbPixels-1; i++) {
+        for(uint16_t i = snake_head; i < nbPixels-1; i++) {
           uint32_t color = strip.getPixelColor(i+1);
           strip.setPixelColor(i, color);
           strip.show();
@@ -404,7 +396,7 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
         strip.show();
         
         // Move tail part of the snake
-        for(uint16_t i=0; i<=snake_tail+1; i++) {
+        for(uint16_t i = 0; i <= snake_tail+1; i++) {
           if(i == snake_tail+1) {
             strip.setPixelColor(snake_tail, strip.Color(0, 0, 0));
             strip.show();
@@ -430,22 +422,33 @@ void runSnake(uint8_t direction, uint8_t nbTurns, uint8_t speed) {
       else
         snake_tail = nbPixels-1;
     }  
-  // Debug
-  /*Serial.print("Head = ");
-  Serial.print(snake_head);  
-  Serial.print("\tTail = ");
-  Serial.println(snake_tail);*/
       
   // Wait
-  uint16_t wait = 110 - (speed*10);
+  uint16_t wait = 110 - (snake.speed * 10);
   delay(wait);
   }
   
   // Turn off when done
   turnOff();
+
+#ifdef _debug_
+  Serial.print("Head = ");
+  Serial.print(snake_head);  
+  Serial.print("\tTail = ");
+  Serial.println(snake_tail);
+#endif
 }
 
-void flash(uint8_t nbFlash, uint16_t wait) {
+void Blink () {
+  for(int i=0; i<2; i++) {
+    turnOn(snake0);
+    delay(250);
+    turnOff();
+    delay(250);
+  }
+}
+
+void flash(neoSnake snake, uint8_t nbFlash, uint16_t wait) {
   uint16_t  flashCount = 0;
   
   while(flashCount < nbFlash) {

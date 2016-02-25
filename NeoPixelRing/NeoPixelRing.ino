@@ -1,5 +1,3 @@
-//TODO: fix number of turns (n.5 instead of n)
-
 #define _debug_
 
 #ifndef _debug_
@@ -52,14 +50,14 @@ typedef struct nsnake neoSnake;
 neoSnake snake0 = {   .direction = RIGHT, \
                       .length = 5,  \
                       .speed = 1, \
-                      .brightness = 100, \
+                      .brightness = 50, \
                       .vRed = 0,    \
                       .vGreen = 255, \
                       .vBlue = 0 };
 neoSnake snake1 = {   .direction = LEFT, \
                       .length = 10,  \
                       .speed = 1, \
-                      .brightness = 100, \
+                      .brightness = 50, \
                       .vRed = 50,    \
                       .vGreen = 150, \
                       .vBlue = 255 };
@@ -272,13 +270,13 @@ void runNeoSnake (neoSnake snake, uint8_t nbTurns) {
   // Init snake
   initNeoSnake(snake);
 
-  while(turnCount < nbTurns) {
+  while(turnCount < nbTurns + 1) {
     // DIRECTION = LEFT
     if(!snake.direction) {
       // Head and tail are on the same part of the ring
       if(snake_head > snake_tail) {
-        // Snake head is on last pixel
-        if(snake_head == nbPixels-1) {
+        // Snake head is back on origin
+        if(snake_head == snake.length) {
           uint32_t color = strip.getPixelColor(nbPixels-1);
           strip.setPixelColor(0, color);
           strip.show();
@@ -351,8 +349,8 @@ void runNeoSnake (neoSnake snake, uint8_t nbTurns) {
     else {
       // Head and tail are on the same part of the ring
       if(snake_head < snake_tail) {
-        // Snake head is on last pixel
-        if(snake_head == 0) {
+        // Snake head is back on origin
+        if(snake_head == (nbPixels-1 - snake.length)) {
           uint32_t color = strip.getPixelColor(0);
           strip.setPixelColor(nbPixels-1, color);
           strip.show();
